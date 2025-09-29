@@ -1,15 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://chicrestosn.com/</loc>
+    <loc>https://bathiemassamba.github.io/chicrestosn-site/</loc>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://chicrestosn.com/menu</loc>
+    <loc>https://bathiemassamba.github.io/chicrestosn-site/Acceuil</loc>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://chicrestosn.com/contact</loc>
+    <loc>https://bathiemassamba.github.io/chicrestosn-site/Menu</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://bathiemassamba.github.io/chicrestosn-site/Galerie</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://bathiemassamba.github.io/chicrestosn-site/A propos</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://bathiemassamba.github.io/chicrestosn-site/contact</loc>
     <priority>0.8</priority>
   </url>
 </urlset>
+
+
