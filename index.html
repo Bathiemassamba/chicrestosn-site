@@ -998,49 +998,72 @@
     });
 
     // --- Panier ---
-    let cart = [];
-    const cartDrawer = document.getElementById('cart-drawer');
-    const cartList = document.getElementById('cart-items');
-    const cartTotalSpan = document.getElementById('cart-total-amount');
-    const cartToggleBtn = document.getElementById('cart-toggle-btn');
-    const cartValidate = document.getElementById('cart-validate-btn');
-    // Ajouter un plat
-    function addToCart(name, price){
-        const item = cart.find(i => i.name === name);
-        if(item){
-            item.qty++;
+let cart = [];
+const cartDrawer = document.getElementById('cart-drawer');
+const cartList = document.getElementById('cart-items');
+const cartTotalSpan = document.getElementById('cart-total-amount');
+const cartToggleBtn = document.getElementById('cart-toggle-btn');
+const cartValidate = document.getElementById('cart-validate-btn');
+// Ajouter un plat (et augmenter la quantité si déjà présent)
+function addToCart(name, price){
+    const item = cart.find(i => i.name === name);
+    if(item){
+        item.qty++;
+    } else {
+        cart.push({name, price, qty:1});
+    }
+    renderCart();
+}
+
+// Nouvelle fonction: Réduire la quantité ou Supprimer
+function reduceQuantity(name) {
+    const itemIndex = cart.findIndex(i => i.name === name);
+
+    if (itemIndex > -1) {
+        if (cart[itemIndex].qty > 1) {
+            // Réduit la quantité si elle est supérieure à 1
+            cart[itemIndex].qty--;
         } else {
-            cart.push({name, price, qty:1});
+            // Supprime l'article si la quantité est 1
+            cart.splice(itemIndex, 1);
         }
         renderCart();
     }
+}
 
-    function formatFCFA(amount){
-        return amount.toLocaleString('fr-FR') + ' FCFA';
+function formatFCFA(amount){
+    return amount.toLocaleString('fr-FR') + ' FCFA';
+}
+function renderCart(){
+    cartList.innerHTML = '';
+    if(cart.length === 0){
+        cartList.innerHTML = '<li class="text-gray-500 text-sm italic">Votre panier est vide.</li>';
+    }else{
+        cart.forEach((item,idx)=>{
+            const li = document.createElement('li');
+            li.className = 'flex items-center justify-between py-2 border-b';
+            li.innerHTML = `
+                <div class="flex-1">
+                    <p class="font-medium text-gray-800">${item.name}</p>
+                    <p class="text-sm text-gray-500">${formatFCFA(item.price)}</p>
+                </div>
+                <div class="flex items-center space-x-2 text-sm">
+                    <button class="text-red-500 hover:text-red-700 font-bold px-2" 
+                            onclick="reduceQuantity('${item.name}')">➖</button>
+                    
+                    <span class="w-6 text-center font-bold">${item.qty}</span>
+                    
+                    <button class="text-green-500 hover:text-green-700 font-bold px-2" 
+                            onclick="addToCart('${item.name}', ${item.price})">➕</button>
+                </div>
+            `;
+            cartList.appendChild(li);
+        });
     }
-    function renderCart(){
-        cartList.innerHTML = '';
-        if(cart.length === 0){
-            cartList.innerHTML = '<li class="text-gray-500 text-sm italic">Votre panier est vide.</li>';
-        }else{
-            cart.forEach((item,idx)=>{
-                const li = document.createElement('li');
-                li.className = 'flex items-center';
-                li.innerHTML = `
-                    <div class="flex-1">
-                        <p class="font-medium text-gray-800">${item.name}</p>
-                        <p class="text-sm text-gray-500">${formatFCFA(item.price)}</p>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-6 text-center">${item.qty}</span>
-                    </div>`;
-                cartList.appendChild(li);
-            });
-        }
-        const total = cart.reduce((sum,i)=>sum + i.price * i.qty,0);
-        cartTotalSpan.textContent = formatFCFA(total);
-        document.getElementById('cart-count').textContent = cart.reduce((s,i)=>s+i.qty,0);
-    }
+    const total = cart.reduce((sum,i)=>sum + i.price * i.qty,0);
+    cartTotalSpan.textContent = formatFCFA(total);
+    document.getElementById('cart-count').textContent = cart.reduce((s,i)=>s+i.qty,0);
+}
 
     // Ouvrir/fermer panier
     cartToggleBtn.addEventListener('click', () => {
@@ -1088,11 +1111,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
-// ...
+  
 
 </script>
 
 </body>
 
 </html>
+
 
