@@ -1000,29 +1000,77 @@
 
     <script>
          // --- Réservations ---
+   const openReservationBtn = document.getElementById('open-reservation');
+    const openReservationMobileBtn = document.getElementById('open-reservation-mobile');
+    const closeReservationModalBtn = document.getElementById('close-reservation-modal');
     const reservationModal = document.getElementById('reservation-modal');
-    document.getElementById('reservation-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const name = document.getElementById('reservation-name').value;
-        const phone = document.getElementById('reservation-phone').value;
-        const date = document.getElementById('reservation-date').value;
-        const time = document.getElementById('reservation-time').value;
-        const guests = document.getElementById('reservation-guests').value;
+    const mobileMenu = document.getElementById('mobile-menu');
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
 
-        try {
-            await db.collection("reservations").add({
-                name, phone, date, time, guests,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            alert("✅ Réservation enregistrée avec succès !");
+    // Fonction pour ouvrir la modale
+    function openModal() {
+        if (reservationModal) {
+            reservationModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Empêche le défilement
+        }
+        // Ferme le menu mobile s'il est ouvert
+        if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+            mobileMenu.classList.add('hidden');
+        }
+    }
+
+    // Fonction pour fermer la modale
+    function closeModal() {
+        if (reservationModal) {
             reservationModal.classList.add('hidden');
-            document.body.style.overflow = 'auto';
-            this.reset();
-        } catch (error) {
-            console.error("Erreur Firebase:", error);
-            alert("❌ Erreur lors de l'enregistrement.");
+            document.body.style.overflow = 'auto'; // Réactive le défilement
+            // Réinitialiser le formulaire
+            document.getElementById('reservation-form').reset();
+        }
+    }
+    
+    // Écouteurs d'événements pour OUVRIR la modale
+    if (openReservationBtn) openReservationBtn.addEventListener('click', function(e) { e.preventDefault(); openModal(); });
+    if (openReservationMobileBtn) openReservationMobileBtn.addEventListener('click', function(e) { e.preventDefault(); openModal(); });
+    
+    // Écouteurs d'événements pour FERMER la modale
+    if (closeReservationModalBtn) closeReservationModalBtn.addEventListener('click', closeModal);
+    if (reservationModal) reservationModal.addEventListener('click', function(e) {
+        if (e.target === reservationModal) {
+            closeModal();
         }
     });
+
+    // Bascule du Menu Mobile
+    if (mobileMenuButton) {
+        mobileMenuButton.addEventListener('click', () => {
+            if (mobileMenu) mobileMenu.classList.toggle('hidden');
+        });
+    }
+    
+    // Logique de soumission de la réservation (Existante, utilisant maintenant closeModal)
+    if (document.getElementById('reservation-form')) {
+        document.getElementById('reservation-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const name = document.getElementById('reservation-name').value;
+            const phone = document.getElementById('reservation-phone').value;
+            const date = document.getElementById('reservation-date').value;
+            const time = document.getElementById('reservation-time').value;
+            const guests = document.getElementById('reservation-guests').value;
+
+            try {
+                await db.collection("reservations").add({
+                    name, phone, date, time, guests,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert("✅ Réservation enregistrée avec succès !");
+                closeModal(); // Utilise la fonction de fermeture
+            } catch (error) {
+                console.error("Erreur Firebase:", error);
+                alert("❌ Erreur lors de l'enregistrement.");
+            }
+        });
+    }
 
     // --- Panier ---
 let cart = [];
@@ -1176,66 +1224,13 @@ function showCategory(category) {
         clickedButton.classList.add('active');
     }
 }
-
-// --- Logique d'interface utilisateur pour la modale de Réservation ---
-    const openReservationBtn = document.getElementById('open-reservation');
-    const openReservationMobileBtn = document.getElementById('open-reservation-mobile');
-    const closeReservationModalBtn = document.getElementById('close-reservation-modal');
-    const reservationModal = document.getElementById('reservation-modal');
-    const mobileMenu = document.getElementById('mobile-menu');
-
-    // Fonction pour ouvrir la modale
-    function openModal() {
-        reservationModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden'; // Empêche le défilement derrière la modale
-        // Ferme le menu mobile s'il est ouvert (important pour le bouton mobile)
-        if (!mobileMenu.classList.contains('hidden')) {
-            mobileMenu.classList.add('hidden');
-        }
-    }
-
-    // Fonction pour fermer la modale
-    function closeModal() {
-        reservationModal.classList.add('hidden');
-        document.body.style.overflow = 'auto'; // Réactive le défilement de la page
-    }
-
-    // Écouteur d'événement pour le bouton de bureau (desktop)
-    openReservationBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        openModal();
-    });
-
-    // Écouteur d'événement pour le bouton mobile
-    openReservationMobileBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        openModal();
-    });
-
-    // Écouteur d'événement pour le bouton de fermeture 'X'
-    closeReservationModalBtn.addEventListener('click', closeModal);
-
-    // Ferme la modale lorsque l'utilisateur clique en dehors (sur l'arrière-plan semi-transparent)
-    reservationModal.addEventListener('click', function(e) {
-        if (e.target === reservationModal) {
-            closeModal();
-        }
-    });
-
-    // --- Bascule du Menu Mobile ---
-    // Ajout de la logique manquante pour ouvrir/fermer le menu mobile lui-même
-    const mobileMenuButton = document.getElementById('mobile-menu-button');
-    mobileMenuButton.addEventListener('click', () => {
-        mobileMenu.classList.toggle('hidden');
-    });
-
             
-
 </script>
 
 </body>
 
 </html>
+
 
 
 
