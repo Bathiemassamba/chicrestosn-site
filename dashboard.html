@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tableau de Bord - Chic Resto (Admin)</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+    <style>
+        .command-card {
+            transition: all 0.3s ease;
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .command-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <div id="login-form" class="flex items-center justify-center min-h-screen">
+        <div class="max-w-md w-full bg-white p-8 rounded-xl shadow-2xl border border-gray-200">
+            <h2 class="text-3xl font-extrabold mb-6 text-center text-orange-600">Connexion Admin</h2>
+            <input type="email" id="admin-email" placeholder="Email Administrateur" class="w-full p-4 border border-gray-300 rounded-lg mb-4 focus:ring-orange-500 focus:border-orange-500" required>
+            <input type="password" id="admin-password" placeholder="Mot de passe" class="w-full p-4 border border-gray-300 rounded-lg mb-6 focus:ring-orange-500 focus:border-orange-500" required>
+            <button id="login-btn" class="w-full bg-orange-600 text-white font-bold p-4 rounded-lg hover:bg-orange-700 transition duration-200 shadow-lg">Se Connecter</button>
+            <p id="error-message" class="text-red-500 mt-4 text-center hidden"></p>
+        </div>
+    </div>
+
+
+    <div id="dashboard-content" class="hidden p-8 max-w-7xl mx-auto">
+        
+        <header class="flex justify-between items-center py-4 border-b border-gray-200 mb-8">
+            <h1 class="text-4xl font-extrabold text-gray-800">Tableau de Bord des Commandes (En Temps Réel)</h1>
+            <button id="logout-btn" class="bg-red-600 text-white font-medium px-6 py-2 rounded-lg hover:bg-red-700 transition duration-200">Déconnexion</button>
+        </header>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+                <h2 class="text-2xl font-bold mb-4 text-orange-600 border-b pb-2">Commandes Récentes</h2>
+                <div id="commands-list" class="space-y-6">
+                    <p class="text-gray-500">Chargement en cours...</p>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-2xl font-bold mb-4 text-green-600 border-b pb-2">Réservations Récentes</h2>
+                <div id="reservations-list" class="space-y-6">
+                     <p class="text-gray-500">Chargement en cours...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script> 
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+    <script>
+        // --- 1. CONFIGURATION FIREBASE ---
+        const firebaseConfig = {
+        apiKey: "AIzaSyBpKjzE_1JdeMgPPEE7ii1Opm5vLw7WXBs",
+        authDomain: "chicrestosn-de54e.firebaseapp.com",
+        projectId: "chicrestosn-de54e",
+        storageBucket: "chicrestosn-de54e.firebasestorage.app",
+        messagingSenderId: "983684839205",
+        appId: "1:983684839205:web:5a4b1706326d1068aa0ccc",
+        measurementId: "G-XD89LP9FXZ"
+    };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth(); 
+
+        // Éléments DOM
+        const loginForm = document.getElementById('login-form');
+        const dashboardContent = document.getElementById('dashboard-content');
+        const commandsList = document.getElementById('commands-list');
+        const reservationsList = document.getElementById('reservations-list');
+        const errorMessage = document.getElementById('error-message');
+
+
+        // --- 2. FONCTIONS DE FORMATAGE ---
+        function formatFCFA(amount){
+            return amount.toLocaleString('fr-FR') + ' FCFA';
+        }
+
+        // --- 3. GESTION DES COMMANDES (LECTURE EN TEMPS RÉEL) ---
+        function loadCommands() {
+            db.collection("commandes")
+                .orderBy("createdAt", "desc") // Affiche les plus récentes en premier
+                .onSnapshot((snapshot) => {
+                    commandsList.innerHTML = ''; 
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        
+                        // Détails des articles
+                        const itemsHtml = data.items.map(item => 
+                            `<li class="text-gray-700">${item.qty} x ${item.name}</li>`
+                        ).join('');
+
+                        const commandElement = document.createElement('div');
+                        commandElement.className = 'command-card bg-white p-5 rounded-xl shadow-md border-l-8 border-orange-500';
+                        commandElement.innerHTML = `
+                            <p class="text-sm text-gray-500 mb-1">Passée le: ${data.createdAt ? data.createdAt.toDate().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}) : 'Heure indisponible'}</p>
+                            <p class="text-lg font-bold text-gray-900 mb-2">☎️ ${data.clientPhone}</p>
+                            <h3 class="text-2xl font-extrabold text-orange-600 mb-3">${formatFCFA(data.total)}</h3>
+                            
+                            <p class="font-medium text-gray-800 mb-1">Articles:</p>
+                            <ul class="list-none space-y-1 text-sm">${itemsHtml}</ul>
+                        `;
+                        commandsList.appendChild(commandElement);
+                    });
+                    if (snapshot.empty) {
+                        commandsList.innerHTML = '<p class="text-gray-500 italic p-4 bg-white rounded-lg">Aucune commande en attente.</p>';
+                    }
+                }, error => {
+                    console.error("Erreur de chargement des commandes:", error);
+                });
+        }
+        
+        // --- 4. GESTION DES RÉSERVATIONS (LECTURE EN TEMPS RÉEL) ---
+        function loadReservations() {
+            db.collection("reservations")
+                .where("date", ">=", new Date().toISOString().split('T')[0]) // Filtre les réservations futures/d'aujourd'hui
+                .orderBy("date", "asc") 
+                .orderBy("time", "asc")
+                .onSnapshot((snapshot) => {
+                    reservationsList.innerHTML = ''; 
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+
+                        const reservationElement = document.createElement('div');
+                        reservationElement.className = 'command-card bg-white p-5 rounded-xl shadow-md border-l-8 border-green-500';
+                        reservationElement.innerHTML = `
+                            <p class="text-lg font-bold text-gray-900 mb-1">👤 ${data.name}</p>
+                            <p class="text-sm text-gray-600 mb-2">☎️ ${data.phone}</p>
+                            
+                            <div class="flex items-center space-x-4">
+                                <span class="bg-blue-100 text-blue-800 text-sm font-semibold px-3 py-1 rounded-full">
+                                    📅 ${data.date} à ${data.time}
+                                </span>
+                                <span class="bg-yellow-100 text-yellow-800 text-sm font-semibold px-3 py-1 rounded-full">
+                                    👨‍👩‍👧‍👦 ${data.guests} personnes
+                                </span>
+                            </div>
+                        `;
+                        reservationsList.appendChild(reservationElement);
+                    });
+                    if (snapshot.empty) {
+                        reservationsList.innerHTML = '<p class="text-gray-500 italic p-4 bg-white rounded-lg">Aucune réservation future trouvée.</p>';
+                    }
+                }, error => {
+                    console.error("Erreur de chargement des réservations:", error);
+                });
+        }
+
+        // --- 5. LOGIQUE D'AUTHENTIFICATION ---
+        
+        // Connexion
+        document.getElementById('login-btn').addEventListener('click', () => {
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-password').value;
+            
+            errorMessage.classList.add('hidden'); // Cache l'ancien message
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .catch((error) => {
+                    // Affiche l'erreur de connexion à l'utilisateur
+                    errorMessage.textContent = "Erreur: " + (error.code === 'auth/wrong-password' ? 'Mot de passe incorrect.' : 'Identifiants invalides.');
+                    errorMessage.classList.remove('hidden');
+                });
+        });
+
+        // Déconnexion
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            auth.signOut();
+        });
+
+        // Gérer l'état de la connexion (ce code s'exécute à chaque chargement de page et à chaque changement d'état)
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // Utilisateur connecté
+                loginForm.classList.add('hidden');
+                dashboardContent.classList.remove('hidden');
+                loadCommands(); // Lance la lecture des commandes
+                loadReservations(); // Lance la lecture des réservations
+            } else {
+                // Utilisateur déconnecté
+                loginForm.classList.remove('hidden');
+                dashboardContent.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
