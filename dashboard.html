@@ -28,7 +28,7 @@
             <h2 class="text-3xl font-extrabold mb-6 text-center text-orange-600">Connexion Admin</h2>
             <input type="email" id="admin-email" placeholder="Email Administrateur" class="w-full p-4 border border-gray-300 rounded-lg mb-4 focus:ring-orange-500 focus:border-orange-500" required>
             <input type="password" id="admin-password" placeholder="Mot de passe" class="w-full p-4 border border-gray-300 rounded-lg mb-6 focus:ring-orange-500 focus:border-orange-500" required>
-            <button id="login-btn" class="w-full bg-orange-600 text-white font-bold p-4 rounded-lg hover:bg-orange-700 transition duration-200 shadow-lg">Se Connecter</button>
+            <button id="login-btn" class="w-full bg-orange-600 text-gray-900 font-bold p-4 rounded-lg hover:bg-orange-700 transition duration-200 shadow-lg">Se Connecter</button>
             <p id="error-message" class="text-red-500 mt-4 text-center hidden"></p>
         </div>
     </div>
@@ -85,11 +85,34 @@
         const errorMessage = document.getElementById('error-message');
 
 
+        // --- NOUVEAU: GESTION DES STATUTS ---
+
+    // Fonction pour mettre à jour le statut d'une commande ou réservation
+    async function updateStatus(collectionName, docId, newStatus) {
+        try {
+            // Utilise l'ID du document et le nouveau statut
+            await db.collection(collectionName).doc(docId).update({
+                status: newStatus,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            console.log(`Statut mis à jour pour ${docId} dans ${collectionName}: ${newStatus}`);
+            // Pas besoin de recharger, onSnapshot gère la mise à jour
+        } catch (error) {
+            console.error("Erreur lors de la mise à jour du statut:", error);
+            alert("Erreur lors de la mise à jour du statut. Vérifiez vos règles Firebase ou votre connexion.");
+        }
+    }
+
+    // Rend la fonction accessible globalement pour les boutons (onClick)
+    window.updateStatus = updateStatus;
+
+
         // --- 2. FONCTIONS DE FORMATAGE ---
         function formatFCFA(amount){
             return amount.toLocaleString('fr-FR') + ' FCFA';
         }
 
+        // --- 3. GESTION DES COMMANDES (LECTURE EN TEMPS RÉEL) ---
         // --- 3. GESTION DES COMMANDES (LECTURE EN TEMPS RÉEL) ---
         function loadCommands() {
             db.collection("commandes")
@@ -98,6 +121,31 @@
                     commandsList.innerHTML = ''; 
                     snapshot.forEach((doc) => {
                         const data = doc.data();
+                        const id = doc.id; // On récupère l'ID du document pour la mise à jour
+
+                        // Détermine le statut et les couleurs
+                        const currentStatus = data.status || 'Nouveau'; // Défaut à 'Nouveau' si non défini
+                        let statusColorClass = 'bg-gray-200 text-gray-800';
+                        let borderColorClass = 'border-l-8 border-gray-400';
+
+                        switch (currentStatus) {
+                            case 'Nouveau':
+                                statusColorClass = 'bg-yellow-100 text-yellow-800';
+                                borderColorClass = 'border-l-8 border-yellow-500';
+                                break;
+                            case 'Préparation':
+                                statusColorClass = 'bg-blue-100 text-blue-800';
+                                borderColorClass = 'border-l-8 border-blue-500';
+                                break;
+                            case 'Prête':
+                                statusColorClass = 'bg-green-100 text-green-800';
+                                borderColorClass = 'border-l-8 border-green-500';
+                                break;
+                            case 'Terminée':
+                                statusColorClass = 'bg-gray-100 text-gray-500';
+                                borderColorClass = 'border-l-8 border-gray-300';
+                                break;
+                        }
                         
                         // Détails des articles
                         const itemsHtml = data.items.map(item => 
@@ -105,14 +153,37 @@
                         ).join('');
 
                         const commandElement = document.createElement('div');
-                        commandElement.className = 'command-card bg-white p-5 rounded-xl shadow-md border-l-8 border-orange-500';
+                        // Utilise la couleur de bordure pour la carte
+                        commandElement.className = `command-card bg-white p-5 rounded-xl shadow-md ${borderColorClass}`; 
+                        
                         commandElement.innerHTML = `
-                            <p class="text-sm text-gray-500 mb-1">Passée le: ${data.createdAt ? data.createdAt.toDate().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}) : 'Heure indisponible'}</p>
-                            <p class="text-lg font-bold text-gray-900 mb-2">☎️ ${data.clientPhone}</p>
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="${statusColorClass} text-xs font-semibold px-2.5 py-0.5 rounded-full">${currentStatus}</span>
+                                    <p class="text-sm text-gray-500 mb-1 mt-1">Passée le: ${data.createdAt ? data.createdAt.toDate().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}) : 'Heure indisponible'}</p>
+                                </div>
+                                <p class="text-lg font-bold text-gray-900">☎️ ${data.clientPhone}</p>
+                            </div>
+                            
                             <h3 class="text-2xl font-extrabold text-orange-600 mb-3">${formatFCFA(data.total)}</h3>
                             
                             <p class="font-medium text-gray-800 mb-1">Articles:</p>
                             <ul class="list-none space-y-1 text-sm">${itemsHtml}</ul>
+                            
+                            <div class="mt-4 pt-3 border-t border-gray-100 flex space-x-2">
+                                <button onclick="updateStatus('commandes', '${id}', 'Préparation')" 
+                                        class="bg-blue-500 text-white text-xs px-3 py-1 rounded hover:bg-blue-600 disabled:opacity-50"
+                                        ${currentStatus === 'Terminée' ? 'disabled' : ''}
+                                        >Préparation</button>
+                                <button onclick="updateStatus('commandes', '${id}', 'Prête')" 
+                                        class="bg-green-500 text-white text-xs px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50"
+                                        ${currentStatus === 'Terminée' ? 'disabled' : ''}
+                                        >Prête</button>
+                                <button onclick="updateStatus('commandes', '${id}', 'Terminée')" 
+                                        class="bg-gray-500 text-white text-xs px-3 py-1 rounded hover:bg-gray-600 disabled:opacity-50"
+                                        ${currentStatus === 'Terminée' ? 'disabled' : ''}
+                                        >Terminée</button>
+                            </div>
                         `;
                         commandsList.appendChild(commandElement);
                     });
